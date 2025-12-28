@@ -1,0 +1,130 @@
+-- AIM LOOK + RED CROSSHAIR + GREEN DISTANCE ESP
+-- By Bot TuanHYPER👺
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+------------------------------------------------
+-- CONFIG
+------------------------------------------------
+local AimKey = Enum.KeyCode.E
+local AimPart = "Head"
+local Smoothness = 0.22 -- cao = look cứng
+local FOV = 200
+
+------------------------------------------------
+-- AIM
+------------------------------------------------
+local Aim = false
+local LockedTarget = nil
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == AimKey then
+		Aim = not Aim
+		if not Aim then LockedTarget = nil end
+	end
+end)
+
+local function GetCenterTarget()
+	local closest, shortest = nil, math.huge
+	local center = Camera.ViewportSize / 2
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer
+		and plr.Character
+		and plr.Character:FindFirstChild(AimPart)
+		and plr.Character:FindFirstChild("Humanoid")
+		and plr.Character.Humanoid.Health > 0 then
+
+			local pos, onScreen = Camera:WorldToViewportPoint(plr.Character[AimPart].Position)
+			if onScreen then
+				local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+				if dist < shortest and dist < FOV then
+					shortest = dist
+					closest = plr
+				end
+			end
+		end
+	end
+	return closest
+end
+
+------------------------------------------------
+-- CROSSHAIR (TÂM ĐỎ)
+------------------------------------------------
+local crosshair = Drawing.new("Circle")
+crosshair.Radius = 4
+crosshair.Color = Color3.fromRGB(255,0,0)
+crosshair.Filled = true
+crosshair.Visible = true
+
+------------------------------------------------
+-- ESP SỐ MÉT
+------------------------------------------------
+local EspTexts = {}
+
+local function CreateESP(plr)
+	local text = Drawing.new("Text")
+	text.Size = 14
+	text.Color = Color3.fromRGB(0,255,0)
+	text.Center = true
+	text.Outline = true
+	EspTexts[plr] = text
+end
+
+local function RemoveESP(plr)
+	if EspTexts[plr] then
+		EspTexts[plr]:Remove()
+		EspTexts[plr] = nil
+	end
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+	if p ~= LocalPlayer then CreateESP(p) end
+end
+
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+------------------------------------------------
+-- MAIN LOOP
+------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	-- Aim
+	if Aim then
+		if not LockedTarget then
+			LockedTarget = GetCenterTarget()
+		end
+		if LockedTarget and LockedTarget.Character then
+			local aimPos = LockedTarget.Character[AimPart].Position
+			local cf = Camera.CFrame
+			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, aimPos), Smoothness)
+		end
+	end
+
+	-- Crosshair update
+	crosshair.Position = Camera.ViewportSize / 2
+
+	-- ESP update
+	for plr, text in pairs(EspTexts) do
+		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = plr.Character.HumanoidRootPart
+			local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+			if onScreen then
+				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+				text.Text = math.floor(dist) .. " m"
+				text.Position = Vector2.new(pos.X, pos.Y - 20)
+				text.Visible = true
+			else
+				text.Visible = false
+			end
+		else
+			text.Visible = false
+		end
+	end
+end)
