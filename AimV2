@@ -1,0 +1,70 @@
+-- SMOOTH LOCK AIM (NO SHAKE)
+-- By TuanHyper
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local Aim = false
+local LockedTarget = nil
+
+local AimPart = "Head"
+local MaxDistance = 350
+local Smoothness = 0.15 -- càng nhỏ càng mượt (0.08 – 0.2 là đẹp)
+
+-- Giữ chuột phải để aim
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		Aim = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		Aim = false
+		LockedTarget = nil
+	end
+end)
+
+-- Tìm target gần nhất
+local function GetClosestPlayer()
+	local closest = nil
+	local dist = MaxDistance
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer
+		and plr.Character
+		and plr.Character:FindFirstChild(AimPart)
+		and plr.Character:FindFirstChild("Humanoid")
+		and plr.Character.Humanoid.Health > 0 then
+
+			local d = (Camera.CFrame.Position - plr.Character[AimPart].Position).Magnitude
+			if d < dist then
+				dist = d
+				closest = plr
+			end
+		end
+	end
+
+	return closest
+end
+
+-- Loop aim mượt
+RunService.RenderStepped:Connect(function()
+	if Aim then
+		if not LockedTarget then
+			LockedTarget = GetClosestPlayer()
+		end
+
+		if LockedTarget and LockedTarget.Character then
+			local aimPos = LockedTarget.Character[AimPart].Position
+			local current = Camera.CFrame
+			local targetCF = CFrame.new(current.Position, aimPos)
+
+			Camera.CFrame = current:Lerp(targetCF, Smoothness)
+		end
+	end
+end)
