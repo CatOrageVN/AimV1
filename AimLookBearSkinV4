@@ -1,4 +1,4 @@
--- FULL AIM + BEAR CROSSHAIR + ESP "Mục Tiêu"
+-- AIM LOOK + BEAR CROSSHAIR + ESP "Mục Tiêu"
 -- By TuanHyper👺
 
 local Players = game:GetService("Players")
@@ -12,47 +12,28 @@ local LocalPlayer = Players.LocalPlayer
 ------------------------------------------------
 local AimKey = Enum.KeyCode.E
 local AimPart = "Head"
-local Smoothness = 0.28
-local FOV = 220
+local Smoothness = 0.22
+local FOV = 200
 
 ------------------------------------------------
--- AIM STATE
+-- AIM
 ------------------------------------------------
 local Aim = false
 local LockedTarget = nil
-local OldCameraType = Camera.CameraType
 
-------------------------------------------------
--- TOGGLE AIM
-------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gp)
 	if gp then return end
 	if input.KeyCode == AimKey then
 		Aim = not Aim
-		if Aim then
-			OldCameraType = Camera.CameraType
-			Camera.CameraType = Enum.CameraType.Scriptable
-		else
-			LockedTarget = nil
-			Camera.CameraType = OldCameraType
-		end
+		if not Aim then LockedTarget = nil end
 	end
 end)
 
-------------------------------------------------
--- GET CENTER TARGET
-------------------------------------------------
 local function GetCenterTarget()
 	local closest, shortest = nil, math.huge
 	local center = Camera.ViewportSize / 2
-
 	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer
-		and plr.Character
-		and plr.Character:FindFirstChild(AimPart)
-		and plr.Character:FindFirstChild("Humanoid")
-		and plr.Character.Humanoid.Health > 0 then
-
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild(AimPart) and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
 			local pos, onScreen = Camera:WorldToViewportPoint(plr.Character[AimPart].Position)
 			if onScreen then
 				local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
@@ -67,7 +48,7 @@ local function GetCenterTarget()
 end
 
 ------------------------------------------------
--- BEAR CROSSHAIR
+-- CROSSHAIR HÌNH GẤU NÂU
 ------------------------------------------------
 local BearHead = Drawing.new("Circle")
 BearHead.Radius = 8
@@ -88,25 +69,22 @@ BearEarR.Color = BearHead.Color
 BearEarR.Visible = true
 
 ------------------------------------------------
--- ESP MET
+-- ESP SỐ MÉT (ĐỔI MÀU + "Mục Tiêu")
 ------------------------------------------------
 local EspTexts = {}
-
 local function CreateESP(plr)
-	local t = Drawing.new("Text")
-	t.Size = 14
-	t.Center = true
-	t.Outline = true
-	EspTexts[plr] = t
+	local text = Drawing.new("Text")
+	text.Size = 14
+	text.Center = true
+	text.Outline = true
+	EspTexts[plr] = text
 end
-
 local function RemoveESP(plr)
 	if EspTexts[plr] then
 		EspTexts[plr]:Remove()
 		EspTexts[plr] = nil
 	end
 end
-
 for _,p in pairs(Players:GetPlayers()) do
 	if p ~= LocalPlayer then CreateESP(p) end
 end
@@ -123,34 +101,19 @@ RunService.RenderStepped:Connect(function()
 			LockedTarget = GetCenterTarget()
 		end
 		if LockedTarget and LockedTarget.Character then
-			local targetPos = LockedTarget.Character[AimPart].Position
+			local aimPos = LockedTarget.Character[AimPart].Position
 			local cf = Camera.CFrame
-			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, targetPos), Smoothness)
+			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, aimPos), Smoothness)
 		end
 	end
 
-	-- BEAR CROSSHAIR: Luôn theo target
-	if LockedTarget and LockedTarget.Character then
-		local screenPos, onScreen = Camera:WorldToViewportPoint(LockedTarget.Character[AimPart].Position)
-		if onScreen then
-			BearHead.Position = Vector2.new(screenPos.X, screenPos.Y)
-			BearEarL.Position = Vector2.new(screenPos.X - 6, screenPos.Y - 6)
-			BearEarR.Position = Vector2.new(screenPos.X + 6, screenPos.Y - 6)
-		else
-			-- Nếu target ngoài màn hình thì giữ tâm giữa màn hình
-			local center = Camera.ViewportSize/2
-			BearHead.Position = center
-			BearEarL.Position = center + Vector2.new(-6,-6)
-			BearEarR.Position = center + Vector2.new(6,-6)
-		end
-	else
-		local center = Camera.ViewportSize/2
-		BearHead.Position = center
-		BearEarL.Position = center + Vector2.new(-6,-6)
-		BearEarR.Position = center + Vector2.new(6,-6)
-	end
+	-- CROSSHAIR UPDATE
+	local center = Camera.ViewportSize / 2
+	BearHead.Position = center
+	BearEarL.Position = center + Vector2.new(-6,-6)
+	BearEarR.Position = center + Vector2.new(6,-6)
 
-	-- ESP update
+	-- ESP UPDATE
 	for plr, text in pairs(EspTexts) do
 		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			local hrp = plr.Character.HumanoidRootPart
