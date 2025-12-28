@@ -1,5 +1,5 @@
--- SMOOTH LOCK AIM (NO SHAKE)
--- By TuanHyper
+-- SMOOTH TOGGLE AIM (NO SHAKE)
+-- By TuanHyper👺
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,29 +10,25 @@ local LocalPlayer = Players.LocalPlayer
 local Aim = false
 local LockedTarget = nil
 
-local AimPart = "Head"
+local AimPart = "Head" -- đổi thành HumanoidRootPart nếu cần
 local MaxDistance = 350
-local Smoothness = 0.15 -- càng nhỏ càng mượt (0.08 – 0.2 là đẹp)
+local Smoothness = 0.12 -- càng nhỏ càng mượt, không rung
 
--- Giữ chuột phải để aim
+-- Toggle Aim bằng phím E
 UserInputService.InputBegan:Connect(function(input, gp)
 	if gp then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton2 then
-		Aim = true
+	if input.KeyCode == Enum.KeyCode.E then
+		Aim = not Aim
+		if not Aim then
+			LockedTarget = nil
+		end
 	end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton2 then
-		Aim = false
-		LockedTarget = nil
-	end
-end)
-
--- Tìm target gần nhất
+-- Tìm player gần nhất
 local function GetClosestPlayer()
 	local closest = nil
-	local dist = MaxDistance
+	local shortest = MaxDistance
 
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer
@@ -41,9 +37,9 @@ local function GetClosestPlayer()
 		and plr.Character:FindFirstChild("Humanoid")
 		and plr.Character.Humanoid.Health > 0 then
 
-			local d = (Camera.CFrame.Position - plr.Character[AimPart].Position).Magnitude
-			if d < dist then
-				dist = d
+			local distance = (Camera.CFrame.Position - plr.Character[AimPart].Position).Magnitude
+			if distance < shortest then
+				shortest = distance
 				closest = plr
 			end
 		end
@@ -52,7 +48,7 @@ local function GetClosestPlayer()
 	return closest
 end
 
--- Loop aim mượt
+-- Aim loop mượt
 RunService.RenderStepped:Connect(function()
 	if Aim then
 		if not LockedTarget then
@@ -61,10 +57,10 @@ RunService.RenderStepped:Connect(function()
 
 		if LockedTarget and LockedTarget.Character then
 			local aimPos = LockedTarget.Character[AimPart].Position
-			local current = Camera.CFrame
-			local targetCF = CFrame.new(current.Position, aimPos)
+			local currentCF = Camera.CFrame
+			local targetCF = CFrame.new(currentCF.Position, aimPos)
 
-			Camera.CFrame = current:Lerp(targetCF, Smoothness)
+			Camera.CFrame = currentCF:Lerp(targetCF, Smoothness)
 		end
 	end
 end)
