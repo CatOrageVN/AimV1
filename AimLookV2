@@ -1,5 +1,5 @@
--- AIM LOOK + RED CROSSHAIR + GREEN DISTANCE ESP
--- By Bot TuanHYPER👺
+-- AIM LOOK + BIG RED CROSSHAIR + ESP COLOR TARGET
+-- By TuanHyper👺
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 ------------------------------------------------
 local AimKey = Enum.KeyCode.E
 local AimPart = "Head"
-local Smoothness = 0.22 -- cao = look cứng
+local Smoothness = 0.22
 local FOV = 200
 
 ------------------------------------------------
@@ -54,23 +54,22 @@ local function GetCenterTarget()
 end
 
 ------------------------------------------------
--- CROSSHAIR (TÂM ĐỎ)
+-- CROSSHAIR (TÂM ĐỎ TO HƠN)
 ------------------------------------------------
 local crosshair = Drawing.new("Circle")
-crosshair.Radius = 4
+crosshair.Radius = 7          -- TO HƠN Ở ĐÂY
 crosshair.Color = Color3.fromRGB(255,0,0)
 crosshair.Filled = true
 crosshair.Visible = true
 
 ------------------------------------------------
--- ESP SỐ MÉT
+-- ESP SỐ MÉT (ĐỔI MÀU)
 ------------------------------------------------
 local EspTexts = {}
 
 local function CreateESP(plr)
 	local text = Drawing.new("Text")
 	text.Size = 14
-	text.Color = Color3.fromRGB(0,255,0)
 	text.Center = true
 	text.Outline = true
 	EspTexts[plr] = text
@@ -94,7 +93,7 @@ Players.PlayerRemoving:Connect(RemoveESP)
 -- MAIN LOOP
 ------------------------------------------------
 RunService.RenderStepped:Connect(function()
-	-- Aim
+	-- AIM
 	if Aim then
 		if not LockedTarget then
 			LockedTarget = GetCenterTarget()
@@ -119,6 +118,14 @@ RunService.RenderStepped:Connect(function()
 				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
 				text.Text = math.floor(dist) .. " m"
 				text.Position = Vector2.new(pos.X, pos.Y - 20)
+
+				-- 🔴 ĐANG AIM → ĐỎ | 🟢 KHÁC → XANH
+				if plr == LockedTarget and Aim then
+					text.Color = Color3.fromRGB(255,0,0)
+				else
+					text.Color = Color3.fromRGB(0,255,0)
+				end
+
 				text.Visible = true
 			else
 				text.Visible = false
