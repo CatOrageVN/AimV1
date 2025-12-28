@@ -1,0 +1,57 @@
+-- AIM PLAYER SCRIPT
+-- By TuanHyper
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local Aim = false
+local AimPart = "Head" -- có thể đổi thành "HumanoidRootPart"
+local MaxDistance = 300
+
+-- Toggle Aim (phím E)
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.E then
+		Aim = not Aim
+	end
+end)
+
+-- Tìm player gần nhất
+local function GetClosestPlayer()
+	local closestPlayer = nil
+	local shortestDistance = MaxDistance
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer
+		and player.Character
+		and player.Character:FindFirstChild(AimPart)
+		and player.Character:FindFirstChild("Humanoid")
+		and player.Character.Humanoid.Health > 0 then
+
+			local pos = Camera.CFrame.Position
+			local targetPos = player.Character[AimPart].Position
+			local distance = (pos - targetPos).Magnitude
+
+			if distance < shortestDistance then
+				shortestDistance = distance
+				closestPlayer = player
+			end
+		end
+	end
+
+	return closestPlayer
+end
+
+-- Aim loop
+RunService.RenderStepped:Connect(function()
+	if Aim then
+		local target = GetClosestPlayer()
+		if target and target.Character then
+			local aimPos = target.Character[AimPart].Position
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPos)
+		end
+	end
+end)
