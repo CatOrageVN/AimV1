@@ -1,0 +1,161 @@
+-- FINAL FULL AIM + BEAR CROSSHAIR (NO IMAGE)
+-- By TuanHyper
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+------------------------------------------------
+-- CONFIG
+------------------------------------------------
+local AimKey = Enum.KeyCode.E
+local AimPart = "Head"
+local Smoothness = 0.28
+local FOV = 220
+
+------------------------------------------------
+-- AIM STATE
+------------------------------------------------
+local Aim = false
+local LockedTarget = nil
+local OldCameraType = Camera.CameraType
+
+------------------------------------------------
+-- TOGGLE AIM
+------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == AimKey then
+		Aim = not Aim
+		if Aim then
+			OldCameraType = Camera.CameraType
+			Camera.CameraType = Enum.CameraType.Scriptable
+		else
+			LockedTarget = nil
+			Camera.CameraType = OldCameraType
+		end
+	end
+end)
+
+------------------------------------------------
+-- GET CENTER TARGET
+------------------------------------------------
+local function GetCenterTarget()
+	local closest, shortest = nil, math.huge
+	local center = Camera.ViewportSize / 2
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer
+		and plr.Character
+		and plr.Character:FindFirstChild(AimPart)
+		and plr.Character:FindFirstChild("Humanoid")
+		and plr.Character.Humanoid.Health > 0 then
+
+			local pos, onScreen = Camera:WorldToViewportPoint(plr.Character[AimPart].Position)
+			if onScreen then
+				local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+				if dist < shortest and dist < FOV then
+					shortest = dist
+					closest = plr
+				end
+			end
+		end
+	end
+	return closest
+end
+
+------------------------------------------------
+-- 🧸 BEAR CROSSHAIR (DRAWING)
+------------------------------------------------
+local BearHead = Drawing.new("Circle")
+BearHead.Radius = 8
+BearHead.Filled = true
+BearHead.Color = Color3.fromRGB(139, 69, 19)
+
+local BearEarL = Drawing.new("Circle")
+BearEarL.Radius = 4
+BearEarL.Filled = true
+BearEarL.Color = BearHead.Color
+
+local BearEarR = Drawing.new("Circle")
+BearEarR.Radius = 4
+BearEarR.Filled = true
+BearEarR.Color = BearHead.Color
+
+------------------------------------------------
+-- ESP MET
+------------------------------------------------
+local EspTexts = {}
+
+local function CreateESP(plr)
+	local t = Drawing.new("Text")
+	t.Size = 14
+	t.Center = true
+	t.Outline = true
+	EspTexts[plr] = t
+end
+
+local function RemoveESP(plr)
+	if EspTexts[plr] then
+		EspTexts[plr]:Remove()
+		EspTexts[plr] = nil
+	end
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+	if p ~= LocalPlayer then CreateESP(p) end
+end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+------------------------------------------------
+-- MAIN LOOP
+------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	local center = Camera.ViewportSize / 2
+
+	-- AIM
+	if Aim then
+		if not LockedTarget then
+			LockedTarget = GetCenterTarget()
+		end
+		if LockedTarget and LockedTarget.Character then
+			local pos = LockedTarget.Character[AimPart].Position
+			local cf = Camera.CFrame
+			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, pos), Smoothness)
+		end
+	end
+
+	-- BEAR CROSSHAIR POS
+	BearHead.Position = center
+	BearEarL.Position = center + Vector2.new(-6, -6)
+	BearEarR.Position = center + Vector2.new(6, -6)
+
+	-- ESP
+	for plr, txt in pairs(EspTexts) do
+		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = plr.Character.HumanoidRootPart
+			local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+			if onScreen then
+				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+				txt.Text = math.floor(dist) .. " m"
+				txt.Position = Vector2.new(pos.X, pos.Y - 20)
+
+				if plr == LockedTarget and Aim then
+					txt.Color = Color3.fromRGB(255,0,0)
+				else
+					txt.Color = Color3.fromRGB(0,255,0)
+				end
+
+				txt.Visible = true
+			else
+				txt.Visible = false
+			end
+		else
+			txt.Visible = false
+		end
+	end
+end)
