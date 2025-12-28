@@ -1,0 +1,73 @@
+-- CENTER LOCK AIM (GHIM TAM)
+-- By Bot AI 😎
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local Aim = false
+local LockedTarget = nil
+
+local AimPart = "Head"
+local Smoothness = 0.1
+local MaxDistance = 400
+
+-- Toggle bằng phím E
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.E then
+		Aim = not Aim
+		if not Aim then
+			LockedTarget = nil
+		end
+	end
+end)
+
+-- Check player gần tâm màn hình nhất
+local function GetCenterTarget()
+	local closest = nil
+	local shortest = math.huge
+	local screenCenter = Camera.ViewportSize / 2
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer
+		and plr.Character
+		and plr.Character:FindFirstChild(AimPart)
+		and plr.Character:FindFirstChild("Humanoid")
+		and plr.Character.Humanoid.Health > 0 then
+
+			local pos, onScreen = Camera:WorldToViewportPoint(
+				plr.Character[AimPart].Position
+			)
+
+			if onScreen then
+				local dist = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
+				if dist < shortest and dist < MaxDistance then
+					shortest = dist
+					closest = plr
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+-- Loop ghim tâm
+RunService.RenderStepped:Connect(function()
+	if Aim then
+		if not LockedTarget then
+			LockedTarget = GetCenterTarget()
+		end
+
+		if LockedTarget and LockedTarget.Character then
+			local aimPos = LockedTarget.Character[AimPart].Position
+			local current = Camera.CFrame
+			local targetCF = CFrame.new(current.Position, aimPos)
+
+			Camera.CFrame = current:Lerp(targetCF, Smoothness)
+		end
+	end
+end)
