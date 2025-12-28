@@ -1,5 +1,5 @@
--- FINAL FULL AIM + BEAR CROSSHAIR (NO IMAGE)
--- By TuanHyper
+-- AIM LOCK + BEAR CROSSHAIR FOLLOW TARGET
+-- By TuanHyper👺
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -67,7 +67,7 @@ local function GetCenterTarget()
 end
 
 ------------------------------------------------
--- 🧸 BEAR CROSSHAIR (DRAWING)
+-- 🧸 BEAR CROSSHAIR (FOLLOW TARGET)
 ------------------------------------------------
 local BearHead = Drawing.new("Circle")
 BearHead.Radius = 8
@@ -114,42 +114,36 @@ Players.PlayerRemoving:Connect(RemoveESP)
 -- MAIN LOOP
 ------------------------------------------------
 RunService.RenderStepped:Connect(function()
-	local center = Camera.ViewportSize / 2
-
 	-- AIM
 	if Aim then
 		if not LockedTarget then
 			LockedTarget = GetCenterTarget()
 		end
 		if LockedTarget and LockedTarget.Character then
-			local pos = LockedTarget.Character[AimPart].Position
+			local targetPos = LockedTarget.Character[AimPart].Position
 			local cf = Camera.CFrame
-			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, pos), Smoothness)
+			Camera.CFrame = cf:Lerp(CFrame.new(cf.Position, targetPos), Smoothness)
+
+			-- UPDATE BEAR CROSSHAIR THEO TARGET
+			local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
+			if onScreen then
+				BearHead.Position = Vector2.new(screenPos.X, screenPos.Y)
+				BearEarL.Position = Vector2.new(screenPos.X - 6, screenPos.Y - 6)
+				BearEarR.Position = Vector2.new(screenPos.X + 6, screenPos.Y - 6)
+			end
 		end
 	end
 
-	-- BEAR CROSSHAIR POS
-	BearHead.Position = center
-	BearEarL.Position = center + Vector2.new(-6, -6)
-	BearEarR.Position = center + Vector2.new(6, -6)
-
-	-- ESP
+	-- ESP update
 	for plr, txt in pairs(EspTexts) do
 		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			local hrp = plr.Character.HumanoidRootPart
 			local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-
 			if onScreen then
 				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
 				txt.Text = math.floor(dist) .. " m"
 				txt.Position = Vector2.new(pos.X, pos.Y - 20)
-
-				if plr == LockedTarget and Aim then
-					txt.Color = Color3.fromRGB(255,0,0)
-				else
-					txt.Color = Color3.fromRGB(0,255,0)
-				end
-
+				txt.Color = (plr == LockedTarget and Aim) and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
 				txt.Visible = true
 			else
 				txt.Visible = false
