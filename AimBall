@@ -1,0 +1,17 @@
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Mouse = LocalPlayer:GetMouse()
+
+-- Giả sử ball là bóng trên sân
+local Ball = workspace:WaitForChild("Volleyball")
+
+-- Auto aim
+RunService.RenderStepped:Connect(function()
+    if Ball.Position.Y < Character.HumanoidRootPart.Position.Y + 5 then
+        -- Di chuyển chuột hướng tới bóng
+        local screenPos = workspace.CurrentCamera:WorldToViewportPoint(Ball.Position)
+        Mouse.Move(screenPos.X, screenPos.Y)
+    end
+end)
