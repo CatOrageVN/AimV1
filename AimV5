@@ -1,0 +1,193 @@
+--[[========================================
+ AIM LOOK + SILENT AIM + WALLBANG
+ RED ❌ CROSSHAIR + ESP "MỤC TIÊU"
+ GUI MÈO CAM 😼
+==========================================]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+------------------------------------------------
+-- CONFIG
+------------------------------------------------
+local AimKey = Enum.KeyCode.E
+local AimPart = "Head"
+local Smoothness = 0.25
+local FOV = 250
+local WallBang = true
+local SilentAim = true
+
+------------------------------------------------
+-- STATE
+------------------------------------------------
+local Aim = false
+local LockedTarget = nil
+
+------------------------------------------------
+-- INPUT
+------------------------------------------------
+UIS.InputBegan:Connect(function(i,gp)
+	if gp then return end
+	if i.KeyCode == AimKey then
+		Aim = not Aim
+		if not Aim then LockedTarget = nil end
+	end
+end)
+
+------------------------------------------------
+-- TARGET SELECT (XUYÊN TƯỜNG)
+------------------------------------------------
+local function GetTarget()
+	local closest, distMin = nil, math.huge
+	local center = Camera.ViewportSize / 2
+
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer
+		and plr.Character
+		and plr.Character:FindFirstChild(AimPart)
+		and plr.Character:FindFirstChild("Humanoid")
+		and plr.Character.Humanoid.Health > 0 then
+
+			local pos = plr.Character[AimPart].Position
+			local screen, onScreen = Camera:WorldToViewportPoint(pos)
+
+			local dist = onScreen
+				and (Vector2.new(screen.X, screen.Y) - center).Magnitude
+				or (Camera.CFrame.Position - pos).Magnitude
+
+			if dist < distMin and dist < FOV then
+				distMin = dist
+				closest = plr
+			end
+		end
+	end
+	return closest
+end
+
+------------------------------------------------
+-- ❌ RED X CROSSHAIR (ĐỘNG)
+------------------------------------------------
+local X1 = Drawing.new("Line")
+local X2 = Drawing.new("Line")
+for _,x in pairs({X1,X2}) do
+	x.Color = Color3.fromRGB(255,0,0)
+	x.Thickness = 2
+	x.Visible = true
+end
+
+------------------------------------------------
+-- ESP "MỤC TIÊU"
+------------------------------------------------
+local Esp = {}
+
+local function AddESP(p)
+	local t = Drawing.new("Text")
+	t.Size = 14
+	t.Center = true
+	t.Outline = true
+	Esp[p] = t
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+	if p ~= LocalPlayer then AddESP(p) end
+end
+Players.PlayerAdded:Connect(AddESP)
+Players.PlayerRemoving:Connect(function(p)
+	if Esp[p] then Esp[p]:Remove() Esp[p]=nil end
+end)
+
+------------------------------------------------
+-- SILENT AIM (HOOK)
+------------------------------------------------
+local mt = getrawmetatable(game)
+setreadonly(mt,false)
+local old = mt.__namecall
+
+mt.__namecall = newcclosure(function(self,...)
+	local args = {...}
+	if SilentAim and Aim and LockedTarget and getnamecallmethod()=="FireServer" then
+		for i,v in pairs(args) do
+			if typeof(v)=="Vector3" then
+				args[i] = LockedTarget.Character[AimPart].Position
+			end
+		end
+		return old(self, unpack(args))
+	end
+	return old(self,...)
+end)
+
+------------------------------------------------
+-- GUI MÈO CAM 😼
+------------------------------------------------
+local gui = Instance.new("ScreenGui",game.CoreGui)
+local btn = Instance.new("TextButton",gui)
+btn.Size = UDim2.new(0,140,0,40)
+btn.Position = UDim2.new(0,20,0,200)
+btn.BackgroundColor3 = Color3.fromRGB(255,140,0)
+btn.Text = "😼 AIM: OFF"
+btn.TextColor3 = Color3.new(1,1,1)
+btn.TextScaled = true
+btn.MouseButton1Click:Connect(function()
+	Aim = not Aim
+	btn.Text = Aim and "😼 AIM: ON" or "😼 AIM: OFF"
+	if not Aim then LockedTarget=nil end
+end)
+
+------------------------------------------------
+-- MAIN LOOP
+------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	-- TARGET
+	if Aim then
+		if not LockedTarget then
+			LockedTarget = GetTarget()
+		end
+	end
+
+	-- AIM LOOK
+	if Aim and LockedTarget and LockedTarget.Character then
+		local pos = LockedTarget.Character[AimPart].Position
+		Camera.CFrame = Camera.CFrame:Lerp(
+			CFrame.new(Camera.CFrame.Position, pos),
+			Smoothness
+		)
+	end
+
+	-- CROSSHAIR UPDATE
+	local c = Camera.ViewportSize/2
+	local size = LockedTarget and Aim and 8 or 5
+	local pulse = LockedTarget and math.abs(math.sin(tick()*6))*255 or 0
+
+	X1.Color = Color3.fromRGB(255,pulse,pulse)
+	X2.Color = X1.Color
+
+	X1.From = c + Vector2.new(-size,-size)
+	X1.To   = c + Vector2.new(size,size)
+	X2.From = c + Vector2.new(-size,size)
+	X2.To   = c + Vector2.new(size,-size)
+
+	-- ESP
+	for p,t in pairs(Esp) do
+		if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = p.Character.HumanoidRootPart
+			local pos,on = Camera:WorldToViewportPoint(hrp.Position)
+			local d = math.floor((Camera.CFrame.Position-hrp.Position).Magnitude)
+
+			if p==LockedTarget and Aim then
+				t.Text = "Mục Tiêu ("..d.."m)"
+				t.Color = Color3.fromRGB(255,0,0)
+			else
+				t.Text = d.." m"
+				t.Color = Color3.fromRGB(0,255,0)
+			end
+
+			t.Position = on and Vector2.new(pos.X,pos.Y-20) or c+Vector2.new(0,70)
+			t.Visible = true
+		else
+			t.Visible = false
+		end
+	end
+end)
