@@ -1,57 +1,120 @@
--- AIM PLAYER SCRIPT
--- By TuanHyper
+-- ESP PLAYER (Bật/Tắt bằng GUI)
+-- By TuanHyper👺
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local Aim = false
-local AimPart = "Head" -- có thể đổi thành "HumanoidRootPart"
-local MaxDistance = 300
+------------------------------------------------
+-- GUI TOGGLE ESP
+------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
 
--- Toggle Aim (phím E)
-UserInputService.InputBegan:Connect(function(input, gp)
-	if gp then return end
-	if input.KeyCode == Enum.KeyCode.E then
-		Aim = not Aim
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 120, 0, 40)
+ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.Text = "ESP: OFF"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
+ToggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+ToggleButton.Parent = ScreenGui
+
+local EspEnabled = false
+
+ToggleButton.MouseButton1Click:Connect(function()
+	EspEnabled = not EspEnabled
+	if EspEnabled then
+		ToggleButton.Text = "ESP: ON"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(0,170,0)
+	else
+		ToggleButton.Text = "ESP: OFF"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
+		-- Ẩn toàn bộ ESP khi tắt
+		for _, text in pairs(EspTexts) do
+			if text then text.Visible = false end
+		end
+		for _, line in pairs(EspLines) do
+			if line then line.Visible = false end
+		end
 	end
 end)
 
--- Tìm player gần nhất
-local function GetClosestPlayer()
-	local closestPlayer = nil
-	local shortestDistance = MaxDistance
+------------------------------------------------
+-- ESP TEXT + TIA
+------------------------------------------------
+local EspTexts = {}
+local EspLines = {}
 
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer
-		and player.Character
-		and player.Character:FindFirstChild(AimPart)
-		and player.Character:FindFirstChild("Humanoid")
-		and player.Character.Humanoid.Health > 0 then
-
-			local pos = Camera.CFrame.Position
-			local targetPos = player.Character[AimPart].Position
-			local distance = (pos - targetPos).Magnitude
-
-			if distance < shortestDistance then
-				shortestDistance = distance
-				closestPlayer = player
-			end
-		end
-	end
-
-	return closestPlayer
+local function CreateESP(plr)
+	local text = Drawing.new("Text")
+	text.Size = 14
+	text.Center = true
+	text.Outline = true
+	text.Visible = false
+	EspTexts[plr] = text
+	
+	local line = Drawing.new("Line")
+	line.Thickness = 1
+	line.Color = Color3.fromRGB(255,255,255)
+	line.Visible = false
+	EspLines[plr] = line
 end
 
--- Aim loop
+local function RemoveESP(plr)
+	if EspTexts[plr] then
+		EspTexts[plr]:Remove()
+		EspTexts[plr] = nil
+	end
+	if EspLines[plr] then
+		EspLines[plr]:Remove()
+		EspLines[plr] = nil
+	end
+end
+
+for _, p in pairs(Players:GetPlayers()) do
+	if p ~= LocalPlayer then CreateESP(p) end
+end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+------------------------------------------------
+-- MAIN LOOP
+------------------------------------------------
 RunService.RenderStepped:Connect(function()
-	if Aim then
-		local target = GetClosestPlayer()
-		if target and target.Character then
-			local aimPos = target.Character[AimPart].Position
-			Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPos)
+	if not EspEnabled then return end
+	
+	local viewportCenter = Camera.ViewportSize / 2
+	
+	for plr, text in pairs(EspTexts) do
+		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = plr.Character.HumanoidRootPart
+			local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+			local line = EspLines[plr]
+			
+			if onScreen then
+				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+				local screenPos = Vector2.new(pos.X, pos.Y)
+				
+				-- Text ESP (khoảng cách)
+				text.Text = math.floor(dist).." m"
+				text.Color = Color3.fromRGB(0,255,0)
+				text.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
+				text.Visible = true
+				
+				-- Line ESP (tia từ chân player xuống giữa màn hình)
+				if line then
+					line.From = Vector2.new(screenPos.X, screenPos.Y + 30)
+					line.To = viewportCenter
+					line.Visible = true
+				end
+			else
+				text.Visible = false
+				if line then line.Visible = false end
+			end
+		else
+			text.Visible = false
+			if EspLines[plr] then EspLines[plr].Visible = false end
 		end
 	end
 end)
